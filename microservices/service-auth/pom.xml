@@ -101,11 +101,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-test-autoconfigure-web</artifactId>
-            <version>4.0.5</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
     <build>
