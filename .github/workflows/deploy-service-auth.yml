@@ -3,13 +3,8 @@ name: Build and Deploy Service Auth
 on:
   push:
     branches: [main, develop]
-    paths:
-      - 'microservices/service-auth/**'
-      - '.github/workflows/deploy-service-auth.yml'
   pull_request:
     branches: [main, develop]
-    paths:
-      - 'microservices/service-auth/**'
 
 env:
   AWS_REGION: us-east-1
