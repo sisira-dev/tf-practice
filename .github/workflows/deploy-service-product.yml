@@ -3,13 +3,8 @@ name: Build and Deploy Service Product
 on:
   push:
     branches: [main, develop]
-    paths:
-      - 'microservices/service-product/**'
-      - '.github/workflows/deploy-service-product.yml'
   pull_request:
     branches: [main, develop]
-    paths:
-      - 'microservices/service-product/**'
 
 env:
   AWS_REGION: us-east-1
