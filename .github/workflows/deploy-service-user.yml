@@ -3,13 +3,8 @@ name: Build and Deploy Service User
 on:
   push:
     branches: [main, develop]
-    paths:
-      - 'microservices/service-user/**'
-      - '.github/workflows/deploy-service-user.yml'
   pull_request:
     branches: [main, develop]
-    paths:
-      - 'microservices/service-user/**'
 
 env:
   AWS_REGION: us-east-1
