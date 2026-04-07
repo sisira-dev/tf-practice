@@ -1,0 +1,50 @@
+# Terraform Variables File for Development Environment
+# Copy this file to terraform.tfvars and update values
+
+aws_region                = "us-east-1"
+project_name              = "microservices-app"
+environment               = "dev"
+
+# VPC Configuration
+vpc_cidr                  = "10.0.0.0/16"
+public_subnet_cidrs       = ["10.0.1.0/24", "10.0.2.0/24"]
+private_subnet_cidrs      = ["10.0.10.0/24", "10.0.11.0/24"]
+database_subnet_cidrs     = ["10.0.20.0/24", "10.0.21.0/24"]
+
+# Database Configuration
+db_master_username        = "admin"
+db_master_password        = "ChangeMe123!@" # Change this!
+db_name                   = "appdb"
+db_instance_class         = "db.t3.small"
+db_instance_count         = 2
+skip_final_snapshot       = true
+
+# Services Configuration
+services                  = ["service-auth", "service-user", "service-product"]
+container_port            = 8080
+task_cpu                  = "256"
+task_memory               = "512"
+ecs_desired_count         = 2
+ecs_min_capacity          = 1
+ecs_max_capacity          = 4
+
+# ALB Configuration
+ssl_certificate_arn       = "" # Leave empty for HTTP, or provide ACM cert ARN
+health_check_path         = "/health"
+health_check_matcher      = "200"
+
+# Route53 Configuration
+domain_name               = "example-app.com"
+create_route53_zone       = false # Set to true if creating new zone
+
+# CloudWatch Configuration
+log_retention_days        = 7
+sns_email                 = "your-email@example.com" # For alarms
+
+# Secrets Manager Configuration
+enable_secret_rotation    = false
+
+# API Keys (store sensitive data)
+api_keys = {
+  # "API_KEY_NAME" = "api-key-value"
+}

@@ -1,0 +1,119 @@
+name: Build and Deploy Service User
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'microservices/service-user/**'
+      - '.github/workflows/deploy-service-user.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'microservices/service-user/**'
+
+env:
+  AWS_REGION: us-east-1
+  SERVICE_NAME: service-user
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+  ENVIRONMENT: dev
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        working-directory: microservices/service-user
+        run: |
+          mvn clean package -DskipTests
+
+      - name: Build Docker image
+        working-directory: microservices/service-user
+        run: |
+          docker build -t ${{ env.ECR_REGISTRY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} .
+          docker tag ${{ env.ECR_REGISTRY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} ${{ env.ECR_REGISTRY }}/${{ env.SERVICE_NAME }}:latest
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Push image to ECR
+        run: |
+          docker push ${{ env.ECR_REGISTRY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          docker push ${{ env.ECR_REGISTRY }}/${{ env.SERVICE_NAME }}:latest
+
+      - name: Create image definitions file
+        run: |
+          printf '[{"name":"${{ env.SERVICE_NAME }}","imageUri":"%s"}]' ${{ env.ECR_REGISTRY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} > imagedefinitions.json
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: imagedefinitions
+          path: imagedefinitions.json
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download image definitions
+        uses: actions/download-artifact@v3
+        with:
+          name: imagedefinitions
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update ECS service
+        run: |
+          CLUSTER=$(aws ecs list-clusters --query 'clusterArns[0]' --output text | xargs basename)
+          SERVICE=$(aws ecs list-services --cluster $CLUSTER --query "serviceArns[?contains(@, '${{ env.SERVICE_NAME }}')]" --output text | xargs basename)
+          
+          aws ecs update-service \
+            --cluster $CLUSTER \
+            --service $SERVICE \
+            --force-new-deployment
+
+      - name: Wait for deployment
+        run: |
+          CLUSTER=$(aws ecs list-clusters --query 'clusterArns[0]' --output text | xargs basename)
+          SERVICE=$(aws ecs list-services --cluster $CLUSTER --query "serviceArns[?contains(@, '${{ env.SERVICE_NAME }}')]" --output text | xargs basename)
+          
+          aws ecs wait services-stable --cluster $CLUSTER --services $SERVICE
+
+      - name: Verify deployment
+        run: |
+          CLUSTER=$(aws ecs list-clusters --query 'clusterArns[0]' --output text | xargs basename)
+          SERVICE=$(aws ecs list-services --cluster $CLUSTER --query "serviceArns[?contains(@, '${{ env.SERVICE_NAME }}')]" --output text | xargs basename)
+          
+          aws ecs describe-services --cluster $CLUSTER --services $SERVICE --query 'services[0].[serviceName,status,desiredCount,runningCount]' --output table
