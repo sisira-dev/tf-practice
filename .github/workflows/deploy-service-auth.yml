@@ -66,7 +66,7 @@ jobs:
           printf '[{"name":"${{ env.SERVICE_NAME }}","imageUri":"%s"}]' ${{ env.ECR_REGISTRY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} > imagedefinitions.json
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: imagedefinitions
           path: imagedefinitions.json
